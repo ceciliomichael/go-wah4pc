@@ -19,13 +19,13 @@ sequenceDiagram
 
     Note over C: 2. Process request<br/>(async, may take days)
 
-    C->>W: 3. POST /v1/fhir/patient/receive
+    C->>W: 3. POST /v1/fhir/patient/respond
     W-->>C: 200 OK
 
     W->>H: 4. Push callback (FHIR Patient)
 
     opt Optional
-        H->>W: 5. GET /receive?requestId=...
+        H->>W: 5. GET /respond?requestId=...
         W-->>H: FHIR Patient response
     end
 ```
@@ -78,7 +78,7 @@ The clinic retrieves pending requests through their own integration with WAH4PC 
 When ready, the clinic sends the FHIR Patient resource:
 
 ```
-POST /v1/fhir/patient/receive
+POST /v1/fhir/patient/respond
 {
   "requestId": "REQ-20251205-0001",
   "fromProviderId": "CLINIC_001",
@@ -106,7 +106,7 @@ WAH4PC automatically POSTs the response to the hospital's `callback.patientRespo
 At any time, the hospital can check status or retrieve the response:
 
 ```
-GET /v1/fhir/patient/receive?requestId=REQ-20251205-0001
+GET /v1/fhir/patient/respond?requestId=REQ-20251205-0001
 ```
 
 ---

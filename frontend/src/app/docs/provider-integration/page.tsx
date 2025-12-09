@@ -42,7 +42,7 @@ const INTEGRATION_FLOW_DIAGRAM = `sequenceDiagram
     Note over YS,OP: As Target
     W->>YS: POST to callback.patientRequest
     Note right of YS: Look up patient, prepare FHIR
-    YS->>W: POST /v1/fhir/patient/receive
+    YS->>W: POST /v1/fhir/patient/respond
     W-->>YS: 200 OK`;
 
 const REQUESTOR_REGISTRATION = `{
@@ -152,7 +152,7 @@ async function processPatientRequest(requestId, patientReference) {
     const patient = await findPatient(patientReference.identifiers);
     
     // Submit response to WAH4PC
-    await fetch('http://localhost:3043/v1/fhir/patient/receive', {
+    await fetch('http://localhost:3043/v1/fhir/patient/respond', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -164,7 +164,7 @@ async function processPatientRequest(requestId, patientReference) {
     });
   } catch (error) {
     // Submit error response
-    await fetch('http://localhost:3043/v1/fhir/patient/receive', {
+    await fetch('http://localhost:3043/v1/fhir/patient/respond', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -209,7 +209,7 @@ export default function ProviderIntegrationPage() {
             <ul className="list-disc list-inside text-sm text-slate-600 space-y-1">
               <li>Register with <code className="bg-slate-200 px-1 rounded text-xs">callback.patientRequest</code></li>
               <li>Implement callback endpoint to receive requests</li>
-              <li>Call <code className="bg-slate-200 px-1 rounded text-xs">POST /v1/fhir/patient/receive</code></li>
+              <li>Call <code className="bg-slate-200 px-1 rounded text-xs">POST /v1/fhir/patient/respond</code></li>
             </ul>
           </InfoBox>
         </div>
@@ -273,7 +273,7 @@ export default function ProviderIntegrationPage() {
               <li>Store the returned <code className="bg-slate-100 px-1 rounded">requestId</code> for tracking</li>
               <li>Wait for WAH4PC to push the response to your callback URL</li>
               <li>Process the FHIR Patient data when received</li>
-              <li>(Optional) Poll <code className="bg-slate-100 px-1 rounded">GET /v1/fhir/patient/receive?requestId=...</code> as fallback</li>
+              <li>(Optional) Poll <code className="bg-slate-100 px-1 rounded">GET /v1/fhir/patient/response?requestId=...</code> as fallback</li>
             </ol>
           </div>
 
@@ -283,7 +283,7 @@ export default function ProviderIntegrationPage() {
               <li>Receive the request via your callback endpoint (or poll for pending requests)</li>
               <li>Look up the patient using the provided identifiers</li>
               <li>Prepare the FHIR Patient resource</li>
-              <li>Call <code className="bg-slate-100 px-1 rounded">POST /v1/fhir/patient/receive</code> with the data</li>
+              <li>Call <code className="bg-slate-100 px-1 rounded">POST /v1/fhir/patient/respond</code> with the data</li>
               <li>WAH4PC automatically pushes the response to the requestor</li>
             </ol>
           </div>
@@ -305,7 +305,7 @@ export default function ProviderIntegrationPage() {
           </InfoBox>
 
           <InfoBox title="Requestors: Poll for Response">
-            <CodeBlock language="bash" code="GET /v1/fhir/patient/receive?requestId=REQ-20250115-0001" />
+            <CodeBlock language="bash" code="GET /v1/fhir/patient/response?requestId=REQ-20250115-0001" />
             <p className="text-sm text-slate-600 mt-3">
               Returns the current status and FHIR data if available.
             </p>
@@ -355,7 +355,7 @@ export default function ProviderIntegrationPage() {
             <ChecklistItem>Implement endpoint to receive incoming requests</ChecklistItem>
             <ChecklistItem>Look up patients using provided identifiers</ChecklistItem>
             <ChecklistItem>
-              Submit FHIR Patient data via <code className="bg-slate-200 px-1 rounded">POST /v1/fhir/patient/receive</code>
+              Submit FHIR Patient data via <code className="bg-slate-200 px-1 rounded">POST /v1/fhir/patient/respond</code>
             </ChecklistItem>
             <ChecklistItem>Handle cases where patient is not found (submit FAILED status)</ChecklistItem>
           </ChecklistGroup>

@@ -180,7 +180,7 @@ go run cmd/server/main.go
       >
         <CodeBlock
           language="bash"
-          code={`curl -X POST ${API_BASE_URL}/v1/fhir/patient/receive \\
+          code={`curl -X POST ${API_BASE_URL}/v1/fhir/patient/respond \\
   -H "Content-Type: application/json" \\
   -d '{
     "requestId": "REQ-20250115-0001",
@@ -222,7 +222,7 @@ go run cmd/server/main.go
       >
         <CodeBlock
           language="bash"
-          code={`curl "${API_BASE_URL}/v1/fhir/patient/receive?requestId=REQ-20250115-0001" | jq`}
+          code={`curl "${API_BASE_URL}/v1/fhir/patient/response?requestId=REQ-20250115-0001" | jq`}
         />
         <CodeBlock
           language="json"
@@ -375,7 +375,7 @@ echo $RESPONSE | jq
 REQUEST_ID=$(echo $RESPONSE | jq -r '.requestId')
 
 echo "\\n=== Step 5: Submit Response ==="
-curl -s -X POST $BASE_URL/v1/fhir/patient/receive \\
+curl -s -X POST $BASE_URL/v1/fhir/patient/respond \\
   -H "Content-Type: application/json" \\
   -d "{
     \\"requestId\\": \\"$REQUEST_ID\\",
@@ -391,7 +391,7 @@ curl -s -X POST $BASE_URL/v1/fhir/patient/receive \\
   }" | jq
 
 echo "\\n=== Step 6: Poll Response ==="
-curl -s "$BASE_URL/v1/fhir/patient/receive?requestId=$REQUEST_ID" | jq
+curl -s "$BASE_URL/v1/fhir/patient/response?requestId=$REQUEST_ID" | jq
 
 echo "\\n=== Done! ==="`}
         />

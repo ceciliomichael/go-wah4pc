@@ -38,8 +38,8 @@ func main() {
 		r.Route("/fhir/patient", func(r chi.Router) {
 			r.Post("/request", patientHandler.CreateRequest)
 			r.Get("/request", patientHandler.GetPendingRequests)
-			r.Post("/receive", patientHandler.ReceiveResponse)
-			r.Get("/receive", patientHandler.GetResponse)
+			r.Post("/respond", patientHandler.ReceiveResponse)
+			r.Get("/response", patientHandler.GetResponse)
 		})
 	})
 

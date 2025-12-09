@@ -5,7 +5,7 @@ curl -X POST http://localhost:3043/v1/provider -H "Content-Type: application/jso
   "type": "HOSPITAL",
   "baseUrl": "https://city-hospital.example.com/api",
   "endpoints": { "patientRequest": "/wah4pc/patient/request" },
-  "callback": { "patientResponse": "https://city-hospital.example.com/wah4pc/patient/receive" }
+  "callback": { "patientResponse": "https://city-hospital.example.com/wah4pc/patient/respond" }
 }'
 
 curl -X POST http://localhost:3043/v1/provider -H "Content-Type: application/json" -d '{
@@ -14,7 +14,7 @@ curl -X POST http://localhost:3043/v1/provider -H "Content-Type: application/jso
   "type": "CLINIC",
   "baseUrl": "https://clinic.example.com/api",
   "endpoints": { "patientRequest": "/wah4pc/patient/request" },
-  "callback": { "patientResponse": "https://clinic.example.com/wah4pc/patient/receive" }
+  "callback": { "patientResponse": "https://clinic.example.com/wah4pc/patient/respond" }
 }'
 
 # 2. Hospital requests patient data from clinic
@@ -28,7 +28,7 @@ curl -X POST http://localhost:3043/v1/fhir/patient/request -H "Content-Type: app
 
 # 3. Clinic sends response (use requestId from step 2)
 # WAH4PC will automatically push to hospital's callback URL
-curl -X POST http://localhost:3043/v1/fhir/patient/receive -H "Content-Type: application/json" -d '{
+curl -X POST http://localhost:3043/v1/fhir/patient/respond -H "Content-Type: application/json" -d '{
   "requestId": "REQ-20251205-0001",
   "fromProviderId": "CLINIC_001",
   "fhirPatient": {
@@ -40,7 +40,7 @@ curl -X POST http://localhost:3043/v1/fhir/patient/receive -H "Content-Type: app
 }'
 
 # 4. Hospital can also pull result (optional, for status check or retry)
-curl "http://localhost:3043/v1/fhir/patient/receive?requestId=REQ-20251205-0001"
+curl "http://localhost:3043/v1/fhir/patient/responde?requestId=REQ-20251205-0001"
 
 # 5. List all providers
 curl http://localhost:3043/v1/provider

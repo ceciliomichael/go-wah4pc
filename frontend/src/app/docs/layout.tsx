@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/ui/sidebar";
+import { CopyMarkdownButton } from "@/components/ui/copy-markdown-button";
 import Link from "next/link";
 import { Menu } from "lucide-react";
 
@@ -40,6 +41,9 @@ export default function DocsLayout({
       <div className="flex">
         <Sidebar />
         <main className="flex-1 min-w-0 py-12 px-4 md:px-8 lg:px-12 max-w-5xl mx-auto">
+          <div className="mb-6 flex justify-end">
+            <CopyMarkdownButton />
+          </div>
           {children}
         </main>
       </div>

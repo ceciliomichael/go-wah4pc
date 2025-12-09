@@ -59,8 +59,8 @@ const ENDPOINTS_OVERVIEW = [
   { method: "post" as const, path: "/v1/provider", description: "Register a new provider" },
   { method: "post" as const, path: "/v1/fhir/patient/request", description: "Create a patient data request" },
   { method: "get" as const, path: "/v1/fhir/patient/request", description: "Get pending requests for a target provider" },
-  { method: "post" as const, path: "/v1/fhir/patient/receive", description: "Submit patient data response" },
-  { method: "get" as const, path: "/v1/fhir/patient/receive", description: "Poll for response by requestId" },
+  { method: "post" as const, path: "/v1/fhir/patient/respond", description: "Submit patient data response" },
+  { method: "get" as const, path: "/v1/fhir/patient/response", description: "Poll for response by requestId" },
 ];
 
 export default function ApiReferencePage() {
@@ -271,9 +271,9 @@ export default function ApiReferencePage() {
             </EndpointSection>
           </EndpointCard>
 
-          <EndpointCard 
-            method="post" 
-            path="/v1/fhir/patient/receive" 
+          <EndpointCard
+            method="post"
+            path="/v1/fhir/patient/respond"
             description="Submit a patient data response. The target provider uses this to send FHIR Patient data back to WAH4PC."
           >
             <EndpointSection title="Request Body">
@@ -328,9 +328,9 @@ export default function ApiReferencePage() {
             </Alert>
           </EndpointCard>
 
-          <EndpointCard 
-            method="get" 
-            path="/v1/fhir/patient/receive" 
+          <EndpointCard
+            method="get"
+            path="/v1/fhir/patient/response"
             description="Poll for a response by requestId. Use this as a fallback if callbacks are not configured or fail."
           >
             <EndpointSection title="Query Parameters">
@@ -342,7 +342,7 @@ export default function ApiReferencePage() {
             </EndpointSection>
 
             <EndpointSection title="Example Request">
-              <CodeBlock language="bash" code="GET /v1/fhir/patient/receive?requestId=REQ-20250115-0001" />
+              <CodeBlock language="bash" code="GET /v1/fhir/patient/response?requestId=REQ-20250115-0001" />
             </EndpointSection>
 
             <EndpointSection title="Response (200 OK) - Pending">

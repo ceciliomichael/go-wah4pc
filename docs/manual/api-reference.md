@@ -22,7 +22,7 @@ GET /v1/provider
     "type": "HOSPITAL",
     "baseUrl": "https://city-hospital.example.com/api",
     "endpoints": { "patientRequest": "/wah4pc/patient/request" },
-    "callback": { "patientResponse": "https://city-hospital.example.com/wah4pc/patient/receive" },
+    "callback": { "patientResponse": "https://city-hospital.example.com/wah4pc/patient/respond" },
     "createdAt": "2025-12-05T05:00:00Z",
     "updatedAt": "2025-12-05T05:00:00Z"
   }
@@ -61,7 +61,7 @@ Content-Type: application/json
     "patientRequest": "/wah4pc/patient/request"
   },
   "callback": {
-    "patientResponse": "https://city-hospital.example.com/wah4pc/patient/receive"
+    "patientResponse": "https://city-hospital.example.com/wah4pc/patient/respond"
   }
 }
 ```
@@ -75,7 +75,7 @@ Content-Type: application/json
   "type": "HOSPITAL",
   "baseUrl": "https://city-hospital.example.com/api",
   "endpoints": { "patientRequest": "/wah4pc/patient/request" },
-  "callback": { "patientResponse": "https://city-hospital.example.com/wah4pc/patient/receive" },
+  "callback": { "patientResponse": "https://city-hospital.example.com/wah4pc/patient/respond" },
   "createdAt": "2025-12-05T05:00:00Z",
   "updatedAt": "2025-12-05T05:00:00Z"
 }
@@ -146,7 +146,7 @@ Content-Type: application/json
 Target provider (clinic) sends the FHIR Patient resource back to WAH4PC.
 
 ```
-POST /v1/fhir/patient/receive
+POST /v1/fhir/patient/respond
 Content-Type: application/json
 ```
 
@@ -209,7 +209,7 @@ Content-Type: application/json
 Requestor can check status or retrieve the response manually.
 
 ```
-GET /v1/fhir/patient/receive?requestId={requestId}
+GET /v1/fhir/patient/respond?requestId={requestId}
 ```
 
 **Response (Pending):**

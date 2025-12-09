@@ -33,7 +33,7 @@ Content-Type: application/json
     "patientRequest": "/wah4pc/patient/request"
   },
   "callback": {
-    "patientResponse": "https://your-system.example.com/wah4pc/patient/receive"
+    "patientResponse": "https://your-system.example.com/wah4pc/patient/respond"
   }
 }
 ```
@@ -92,7 +92,7 @@ Return `200 OK` to acknowledge receipt. Body content is ignored.
 If your callback is unreachable or returns an error:
 - WAH4PC logs the failure
 - The response is still stored in WAH4PC
-- You can retrieve it later via `GET /v1/fhir/patient/receive?requestId=...`
+- You can retrieve it later via `GET /v1/fhir/patient/respond?requestId=...`
 
 ---
 
@@ -138,7 +138,7 @@ Store the `requestId` to correlate with the incoming callback.
 When you are the **target** of a request, send the FHIR Patient back:
 
 ```
-POST /v1/fhir/patient/receive
+POST /v1/fhir/patient/respond
 Content-Type: application/json
 ```
 
@@ -175,7 +175,7 @@ If you cannot fulfill the request:
 You can always check the status of a request:
 
 ```
-GET /v1/fhir/patient/receive?requestId=REQ-20251205-0001
+GET /v1/fhir/patient/respond?requestId=REQ-20251205-0001
 ```
 
 This is useful for:

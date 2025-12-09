@@ -45,6 +45,7 @@ export function Mermaid({ chart }: MermaidProps) {
   return (
     <div
       ref={ref}
+      data-mermaid-source={chart}
       className="flex justify-center my-8 p-4 bg-white rounded-xl border border-slate-100 shadow-sm overflow-x-auto"
     />
   );

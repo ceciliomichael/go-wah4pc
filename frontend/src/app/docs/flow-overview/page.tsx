@@ -81,30 +81,27 @@ const STATUS_LIFECYCLE = [
   { status: "failed" as const, description: "Target could not fulfill the request" },
 ];
 
-const ARCHITECTURE_DIAGRAM = `flowchart LR
-    subgraph Providers
-        H[Hospital]
-        C[Clinic]
-        L[Lab]
-    end
+const ARCHITECTURE_DIAGRAM = `sequenceDiagram
+    participant Providers as Healthcare Providers<br/>(Hospital, Clinic, Lab)
+    participant API as REST API
+    participant Store as Request Store
+    participant Push as Push Engine
     
-    subgraph WAH4PC Gateway
-        API[REST API]
-        STORE[(Request Store)]
-        PUSH[Push Engine]
-    end
+    Note over Providers,Push: Registration Phase
+    Providers->>API: Register with callback URLs
+    API->>Store: Save provider config
     
-    H -->|Register| API
-    C -->|Register| API
-    L -->|Register| API
+    Note over Providers,Push: Request Phase
+    Providers->>API: POST /v1/fhir/patient/request
+    API->>Store: Store request (PENDING)
+    API->>Push: Trigger push to target
+    Push->>Providers: POST to callback.patientRequest
     
-    H -->|Request Patient| API
-    API -->|Store Request| STORE
-    API -->|Push to Target| C
-    
-    C -->|Submit Response| API
-    API -->|Update Status| STORE
-    PUSH -->|Callback| H`;
+    Note over Providers,Push: Response Phase
+    Providers->>API: POST /v1/fhir/patient/respond
+    API->>Store: Update status (COMPLETED)
+    API->>Push: Trigger callback to requestor
+    Push->>Providers: POST to callback.patientResponse`;
 
 const SEQUENCE_DIAGRAM = `sequenceDiagram
     participant H as Hospital (Requestor)
@@ -139,7 +136,7 @@ const SEQUENCE_DIAGRAM = `sequenceDiagram
     Note over C: Phase 4: Target Processes Request (async)
 
     Note over H,C: Phase 5: Response Submission
-    C->>W: POST /v1/fhir/patient/receive
+    C->>W: POST /v1/fhir/patient/respond
     Note right of C: {requestId, fhirPatient, status: "COMPLETED"}
     W->>W: Validate fromProviderId matches target
     W->>W: Store response, update status
@@ -151,7 +148,7 @@ const SEQUENCE_DIAGRAM = `sequenceDiagram
     H-->>W: 200 OK
 
     alt Requestor polls instead of callback
-        H->>W: GET /v1/fhir/patient/receive?requestId=...
+        H->>W: GET /v1/fhir/patient/respond?requestId=...
         W-->>H: {fhirPatient, status}
     end`;
 
