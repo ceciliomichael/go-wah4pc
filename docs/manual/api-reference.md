@@ -4,82 +4,53 @@ Base URL: `http://localhost:3043`
 
 ---
 
+## Endpoints Overview
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/v1/provider` | List all registered providers |
+| POST | `/v1/provider` | Register a new provider |
+| POST | `/v1/fhir/patient/request` | Create a patient data request |
+| GET | `/v1/fhir/patient/request` | Get pending requests for a target provider |
+| POST | `/v1/fhir/patient/respond` | Submit patient data response |
+| GET | `/v1/fhir/patient/response` | Poll for response by requestId |
+
+---
+
 ## Provider Management
 
 ### List Providers
 
-```
-GET /v1/provider
-```
 
-**Response:**
 
-```json
-[
-  {
-    "providerId": "HOSPITAL_001",
-    "name": "City Hospital",
-    "type": "HOSPITAL",
-    "baseUrl": "https://city-hospital.example.com/api",
-    "endpoints": { "patientRequest": "/wah4pc/patient/request" },
-    "callback": { "patientResponse": "https://city-hospital.example.com/wah4pc/patient/respond" },
-    "createdAt": "2025-12-05T05:00:00Z",
-    "updatedAt": "2025-12-05T05:00:00Z"
-  }
-]
-```
+**Response (200 OK):**
+
+
 
 ---
 
 ### Register Provider
 
-```
-POST /v1/provider
-Content-Type: application/json
-```
+
 
 **Request Body:**
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `providerId` | string | Yes | Unique identifier for the provider |
-| `name` | string | Yes | Display name |
-| `type` | string | Yes | `HOSPITAL`, `CLINIC`, `LAB`, `PHARMACY`, `OTHER` |
+| `name` | string | Yes | Display name of the organization |
+| `type` | string | Yes | HOSPITAL, CLINIC, LAB, PHARMACY, OTHER |
 | `baseUrl` | string | Yes | Base URL of the provider's API |
-| `endpoints.patientRequest` | string | No | Endpoint where provider receives patient requests |
-| `callback.patientResponse` | string | Yes | URL where WAH4PC pushes patient responses |
+| `callback.patientRequest` | string | No | URL to receive incoming patient data requests (for targets) |
+| `callback.patientResponse` | string | No | URL to receive patient data responses (for requestors) |
 
-**Example:**
+**Example Request:**
 
-```json
-{
-  "providerId": "HOSPITAL_001",
-  "name": "City Hospital",
-  "type": "HOSPITAL",
-  "baseUrl": "https://city-hospital.example.com/api",
-  "endpoints": {
-    "patientRequest": "/wah4pc/patient/request"
-  },
-  "callback": {
-    "patientResponse": "https://city-hospital.example.com/wah4pc/patient/respond"
-  }
-}
-```
+
 
 **Response (201 Created):**
 
-```json
-{
-  "providerId": "HOSPITAL_001",
-  "name": "City Hospital",
-  "type": "HOSPITAL",
-  "baseUrl": "https://city-hospital.example.com/api",
-  "endpoints": { "patientRequest": "/wah4pc/patient/request" },
-  "callback": { "patientResponse": "https://city-hospital.example.com/wah4pc/patient/respond" },
-  "createdAt": "2025-12-05T05:00:00Z",
-  "updatedAt": "2025-12-05T05:00:00Z"
-}
-```
+
 
 ---
 
@@ -87,173 +58,160 @@ Content-Type: application/json
 
 ### Create Patient Request
 
-Hospital requests patient data from another provider (e.g., clinic).
 
-```
-POST /v1/fhir/patient/request
-Content-Type: application/json
-```
+
+Create a patient data request. WAH4PC will push this request to the target provider's callback URL.
 
 **Request Body:**
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `requestorProviderId` | string | Yes | Provider ID of the requestor |
-| `targetProviderId` | string | Yes | Provider ID of the target (who has the data) |
-| `correlationKey` | string | No | External reference ID for tracking |
-| `patientReference.id` | string | No | Known patient ID |
-| `patientReference.identifiers` | array | No | Patient identifiers (system + value) |
-| `fhirConstraints.resourceType` | string | No | Default: `Patient` |
-| `fhirConstraints.version` | string | No | Default: `4.0.1` |
-| `metadata.reason` | string | No | Reason for request |
-| `metadata.notes` | string | No | Additional notes |
+| `requestorProviderId` | string | Yes | ID of the requesting provider |
+| `targetProviderId` | string | Yes | ID of the target provider |
+| `patientReference` | object | Yes | Patient identifiers to look up |
+| `correlationKey` | string | No | Optional reference number for tracking |
+| `metadata` | object | No | Additional context (reason, notes) |
 
-**Example:**
+**Example Request:**
 
-```json
-{
-  "requestorProviderId": "HOSPITAL_001",
-  "targetProviderId": "CLINIC_001",
-  "correlationKey": "REF-12345",
-  "patientReference": {
-    "identifiers": [
-      { "system": "NATIONAL_ID", "value": "123456789" }
-    ]
-  },
-  "metadata": {
-    "reason": "OUTPATIENT_CONSULT",
-    "notes": "Patient referred from clinic"
-  }
-}
-```
+
 
 **Response (201 Created):**
 
-```json
-{
-  "requestId": "REQ-20251205-0001",
-  "status": "PENDING",
-  "requestorProviderId": "HOSPITAL_001",
-  "targetProviderId": "CLINIC_001",
-  "createdAt": "2025-12-05T05:10:00Z"
-}
-```
+
+
+**Note:** After creating the request, WAH4PC automatically pushes it to the target's `callback.patientRequest` URL.
 
 ---
 
-### Submit Patient Response (Target Provider)
+### Get Pending Requests
 
-Target provider (clinic) sends the FHIR Patient resource back to WAH4PC.
 
-```
-POST /v1/fhir/patient/respond
-Content-Type: application/json
-```
+
+Get all pending requests for a target provider. Use this as a polling alternative if callbacks are not configured.
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `targetProviderId` | string | Yes | ID of the target provider to get pending requests for |
+
+**Example Request:**
+
+
+
+**Response (200 OK):**
+
+
+
+---
+
+### Submit Patient Response
+
+
+
+Submit a patient data response. The target provider uses this to send FHIR Patient data back to WAH4PC.
 
 **Request Body:**
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `requestId` | string | Yes | The request ID from the original request |
-| `fromProviderId` | string | Yes | Provider ID of the responder (must match target) |
-| `fhirPatient` | object | Yes* | FHIR R4 Patient resource JSON |
-| `status` | string | Yes | `COMPLETED` or `FAILED` |
-| `error` | string | No | Error message if status is `FAILED` |
+| `requestId` | string | Yes | The request ID to respond to |
+| `fromProviderId` | string | Yes | Must match the original targetProviderId |
+| `status` | string | Yes | COMPLETED or FAILED |
+| `fhirPatient` | object | Conditional | FHIR Patient resource (required if COMPLETED) |
+| `error` | string | Conditional | Error message (required if FAILED) |
 
-**Example (Success):**
+**Example Request (Success):**
 
-```json
-{
-  "requestId": "REQ-20251205-0001",
-  "fromProviderId": "CLINIC_001",
-  "fhirPatient": {
-    "resourceType": "Patient",
-    "id": "pat-123",
-    "name": [
-      { "family": "Doe", "given": ["John"] }
-    ],
-    "gender": "male",
-    "birthDate": "1990-01-15"
-  },
-  "status": "COMPLETED"
-}
-```
 
-**Example (Failure):**
 
-```json
-{
-  "requestId": "REQ-20251205-0001",
-  "fromProviderId": "CLINIC_001",
-  "status": "FAILED",
-  "error": "Patient not found in system"
-}
-```
+**Example Request (Failure):**
+
+
 
 **Response (200 OK):**
 
-```json
-{
-  "requestId": "REQ-20251205-0001",
-  "status": "COMPLETED",
-  "receivedAt": "2025-12-05T06:00:00Z"
-}
-```
 
-**Side Effect:** WAH4PC automatically pushes the response to the requestor's `callback.patientResponse` URL.
+
+**Note:** After receiving a COMPLETED response, WAH4PC automatically pushes the FHIR Patient data to the requestor's `callback.patientResponse` URL.
 
 ---
 
-### Pull Patient Response (Requestor)
+### Poll for Response
 
-Requestor can check status or retrieve the response manually.
 
-```
-GET /v1/fhir/patient/respond?requestId={requestId}
-```
 
-**Response (Pending):**
+Poll for a response by requestId. Use this as a fallback if callbacks are not configured or fail.
 
-```json
-{
-  "requestId": "REQ-20251205-0001",
-  "requestorProviderId": "HOSPITAL_001",
-  "targetProviderId": "CLINIC_001",
-  "status": "PENDING"
-}
-```
+**Query Parameters:**
 
-**Response (Completed):**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `requestId` | string | Yes | The request ID to check status for |
 
-```json
-{
-  "requestId": "REQ-20251205-0001",
-  "requestorProviderId": "HOSPITAL_001",
-  "targetProviderId": "CLINIC_001",
-  "status": "COMPLETED",
-  "fhirPatient": {
-    "resourceType": "Patient",
-    "id": "pat-123",
-    "name": [{ "family": "Doe", "given": ["John"] }]
-  },
-  "completedAt": "2025-12-05T06:00:00Z"
-}
-```
+**Example Request:**
+
+
+
+**Response (200 OK) - Pending:**
+
+
+
+**Response (200 OK) - Completed:**
+
+
+
+---
+
+## Callback Payloads
+
+WAH4PC pushes data to provider callback URLs. Your system must implement these endpoints to receive pushed notifications.
+
+### Callback: Patient Request
+
+**Payload pushed to target providers when a new patient data request is created.**
+
+
+
+**Payload:**
+
+
+
+**Expected Response:** Return `200 OK` to acknowledge receipt. Response body is ignored.
+
+---
+
+### Callback: Patient Response
+
+**Payload pushed to requestor providers when a patient data response is received.**
+
+
+
+**Payload (Success):**
+
+
+
+**Payload (Failure):**
+
+
+
+**Expected Response:** Return `200 OK` to acknowledge receipt. Response body is ignored.
 
 ---
 
 ## Error Responses
 
-All errors return JSON with an `error` field:
+All error responses follow a consistent format.
 
-```json
-{
-  "error": "description of the error"
-}
-```
+| Status Code | Description | Example Error |
+|-------------|-------------|----------------|
+| 400 | Bad Request - Invalid input | requestorProviderId and targetProviderId are required |
+| 400 | Bad Request - Provider not found | requestor provider not found |
+| 400 | Bad Request - Invalid response | fromProviderId does not match target provider |
+| 404 | Not Found | request not found |
+| 409 | Conflict - Duplicate | provider already exists |
+| 500 | Internal Server Error | internal server error |
 
-| Status Code | Meaning |
-|-------------|---------|
-| 400 | Bad request (missing/invalid fields) |
-| 404 | Resource not found |
-| 500 | Internal server error |
+**Error Response Format:**
+

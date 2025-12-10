@@ -8,6 +8,9 @@
 6. Refine the plan. 
 7. Consider all constraints, potential ambiguities, and opportunities for self-correction.
 
+<TASK>
+The primary task is to create the backend system, which is a gateway for healthcare to connect them to each other, you may study the system for context
+</TASK>
 <development_flow>
 0. Do an assessment of the user's query.
 1. Use the <workspace_information> it contains current files and structure.
@@ -20,6 +23,14 @@
 </development_flow>
 
 <skills>
+# MONOREPO
+
+# File Organization
+
+root/ - # Backend files location
+root
+ └── frontend/ - # Frontend files location
+
 # Go Microservices Development Skills
 
 ## File Organization

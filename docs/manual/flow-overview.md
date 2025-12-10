@@ -4,9 +4,37 @@ WAH4PC is an API gateway orchestrator for healthcare interoperability. It enable
 
 ---
 
-## Core Concept
+## Architecture Overview
 
-WAH4PC acts as a **central hub** between healthcare providers:
+WAH4PC is a Go-based API gateway that orchestrates asynchronous patient data exchange between registered healthcare providers (hospitals, clinics, labs, pharmacies).
+
+```mermaid
+sequenceDiagram
+    participant Providers as Healthcare Providers<br/>(Hospital, Clinic, Lab)
+    participant API as REST API
+    participant Store as Request Store
+    participant Push as Push Engine
+    
+    Note over Providers,Push: Registration Phase
+    Providers->>API: Register with callback URLs
+    API->>Store: Save provider config
+    
+    Note over Providers,Push: Request Phase
+    Providers->>API: POST /v1/fhir/patient/request
+    API->>Store: Store request (PENDING)
+    API->>Push: Trigger push to target
+    Push->>Providers: POST to callback.patientRequest
+    
+    Note over Providers,Push: Response Phase
+    Providers->>API: POST /v1/fhir/patient/respond
+    API->>Store: Update status (COMPLETED)
+    API->>Push: Trigger callback to requestor
+    Push->>Providers: POST to callback.patientResponse
+```
+
+---
+
+## Complete Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -14,119 +42,128 @@ sequenceDiagram
     participant W as WAH4PC Gateway
     participant C as Clinic (Target)
 
-    H->>W: 1. POST /v1/fhir/patient/request
-    W-->>H: requestId + PENDING
+    Note over H,C: Phase 1: Provider Registration
+    H->>W: POST /v1/provider
+    Note right of H: callback.patientResponse = "http://hospital/callback"
+    W-->>H: 201 Created
+    C->>W: POST /v1/provider
+    Note right of C: callback.patientRequest = "http://clinic/incoming"
+    W-->>C: 201 Created
 
-    Note over C: 2. Process request<br/>(async, may take days)
+    Note over H,C: Phase 2: Patient Data Request
+    H->>W: POST /v1/fhir/patient/request
+    W->>W: Validate providers exist
+    W->>W: Generate requestId (REQ-YYYYMMDD-NNNN)
+    W->>W: Store request (status: PENDING)
+    W-->>H: {requestId, status: "PENDING"}
 
-    C->>W: 3. POST /v1/fhir/patient/respond
+    Note over W,C: Phase 3: Push Request to Target
+    W->>C: POST to callback.patientRequest
+    Note left of W: {requestId, patientReference, fhirConstraints}
+    C-->>W: 200 OK
+
+    alt Target polls instead of receiving push
+        C->>W: GET /v1/fhir/patient/request?targetProviderId=...
+        W-->>C: {pendingRequests: [...]}
+    end
+
+    Note over C: Phase 4: Target Processes Request (async)
+
+    Note over H,C: Phase 5: Response Submission
+    C->>W: POST /v1/fhir/patient/respond
+    Note right of C: {requestId, fhirPatient, status: "COMPLETED"}
+    W->>W: Validate fromProviderId matches target
+    W->>W: Store response, update status
     W-->>C: 200 OK
 
-    W->>H: 4. Push callback (FHIR Patient)
+    Note over H,C: Phase 6: Push Response to Requestor
+    W->>H: POST to callback.patientResponse
+    Note left of W: {requestId, fhirPatient, status}
+    H-->>W: 200 OK
 
-    opt Optional
-        H->>W: 5. GET /respond?requestId=...
-        W-->>H: FHIR Patient response
+    alt Requestor polls instead of callback
+        H->>W: GET /v1/fhir/patient/respond?requestId=...
+        W-->>H: {fhirPatient, status}
     end
 ```
 
 ---
 
-## Step-by-Step Flow
+## Six Flow Phases
 
-### 1. Provider Registration
+### Phase 1: Provider Registration
 
-Before any data exchange, all providers must register with WAH4PC:
+Both the requestor (e.g., Hospital) and target (e.g., Clinic) must register with WAH4PC before exchanging data. Registration includes callback URLs for receiving pushed notifications.
 
-```
-POST /v1/provider
-```
-
-Each provider specifies:
-- Their identity (`providerId`, `name`, `type`)
-- Their API location (`baseUrl`)
-- Where they receive requests (`endpoints.patientRequest`)
-- Where they receive pushed responses (`callback.patientResponse`)
-
-### 2. Hospital Creates Request
-
-Hospital wants patient data from a clinic:
-
-```
-POST /v1/fhir/patient/request
-{
-  "requestorProviderId": "HOSPITAL_001",
-  "targetProviderId": "CLINIC_001",
-  "patientReference": {
-    "identifiers": [{ "system": "NATIONAL_ID", "value": "123456789" }]
-  }
-}
-```
-
-WAH4PC returns a `requestId` with status `PENDING`.
-
-### 3. Clinic Processes Request
-
-The clinic (target) processes the request on their own timeline. This could be:
-- Immediate (seconds)
-- Delayed (hours, days, or longer)
-
-The clinic retrieves pending requests through their own integration with WAH4PC (future: WAH4PC will push to `endpoints.patientRequest`).
-
-### 4. Clinic Sends Response
-
-When ready, the clinic sends the FHIR Patient resource:
-
-```
-POST /v1/fhir/patient/respond
-{
-  "requestId": "REQ-20251205-0001",
-  "fromProviderId": "CLINIC_001",
-  "fhirPatient": { ... FHIR Patient JSON ... },
-  "status": "COMPLETED"
-}
-```
-
-### 5. WAH4PC Pushes to Hospital
-
-WAH4PC automatically POSTs the response to the hospital's `callback.patientResponse` URL:
-
-```json
-{
-  "requestId": "REQ-20251205-0001",
-  "fromProviderId": "CLINIC_001",
-  "toProviderId": "HOSPITAL_001",
-  "status": "COMPLETED",
-  "fhirPatient": { ... }
-}
-```
-
-### 6. Hospital Can Also Pull
-
-At any time, the hospital can check status or retrieve the response:
-
-```
-GET /v1/fhir/patient/respond?requestId=REQ-20251205-0001
-```
+**Callbacks:**
+- `callback.patientRequest` - URL where WAH4PC pushes incoming requests (for targets)
+- `callback.patientResponse` - URL where WAH4PC pushes responses (for requestors)
 
 ---
 
-## Key Design Decisions
+### Phase 2: Request Creation
 
-| Aspect | Decision |
-|--------|----------|
-| **Async by default** | Requests don't block; responses can arrive later |
-| **Push + Pull** | Responses are pushed to callback, but pull is always available |
-| **FHIR R4 4.0.1** | Patient resources follow FHIR R4 standard |
-| **Provider-agnostic** | External systems adapt to WAH4PC format, not vice versa |
-| **No security (v1)** | Authentication/authorization deferred for initial development |
+The requestor creates a patient data request specifying the target provider and patient identifiers. WAH4PC validates both providers exist, generates a unique requestId, and stores the request with PENDING status.
 
 ---
 
-## Request Statuses
+### Phase 3: Push to Target
 
-| Status | Meaning |
-|--------|---------|
-| `PENDING` | Request created, waiting for target to respond |
-| `COMPLETED` | Target sent FHIR Patient successfully |
+WAH4PC immediately pushes the request to the target provider's `callback.patientRequest` URL. If the target doesn't have a callback configured, they can poll for pending requests instead.
+
+---
+
+### Phase 4: Async Processing
+
+The target provider processes the request asynchronously. This may involve manual review, data retrieval from internal systems, or approval workflows. This phase can take minutes, hours, or even days.
+
+---
+
+### Phase 5: Response Submission
+
+The target submits the FHIR Patient resource back to WAH4PC. The gateway validates that the `fromProviderId` matches the original target, stores the response, and updates the request status to COMPLETED or FAILED.
+
+---
+
+### Phase 6: Push to Requestor
+
+WAH4PC automatically pushes the FHIR Patient data to the requestor's `callback.patientResponse` URL. The requestor can also poll for the response if the callback fails or isn't configured.
+
+---
+
+## Key Concepts
+
+### Async by Default
+
+Healthcare requests often require manual review or approval. WAH4PC is designed to handle long-running transactions where responses may take hours or days.
+
+### Bidirectional Push
+
+WAH4PC pushes requests to targets AND responses to requestors. Both directions support polling as a fallback mechanism.
+
+### FHIR R4 Standard
+
+All patient data is exchanged using the HL7 FHIR R4 (4.0.1) Patient resource format to ensure interoperability between different healthcare systems.
+
+### Provider Validation
+
+WAH4PC validates that both requestor and target providers are registered, and that responses come from the correct target provider.
+
+---
+
+## Request Status Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING: Request Created
+    PENDING --> COMPLETED: Target submits fhirPatient
+    PENDING --> FAILED: Target submits error
+    COMPLETED --> [*]
+    FAILED --> [*]
+```
+
+| Status | Description |
+|--------|-------------|
+| `PENDING` | Request created, awaiting response from target |
+| `COMPLETED` | Target submitted FHIR Patient data successfully |
 | `FAILED` | Target could not fulfill the request |

@@ -1,155 +1,132 @@
 # WAH4PC Quickstart
 
-Get WAH4PC running and test the full patient data exchange flow.
+Get started with WAH4PC in minutes. This guide walks you through a complete end-to-end patient data exchange between two healthcare providers.
 
 ---
 
-## 1. Start the Server
+## Prerequisites
 
-```bash
-# Build
-go build -o wah4pc.exe ./cmd/server
+- WAH4PC gateway running on `localhost:3043`
+- `curl` or any HTTP client
+- (Optional) Python 3 for mock callback servers
 
-# Run
-./wah4pc.exe
-```
+**Start the WAH4PC gateway:**
 
-Server starts on `http://localhost:3043`.
+
 
 ---
 
-## 2. Register Providers
+## Step 1: Register the Hospital (Requestor)
 
-Register a hospital and a clinic:
+Register the Hospital with a `callback.patientResponse` URL where it will receive FHIR patient data.
 
-```bash
-# Hospital
-curl -X POST http://localhost:3043/v1/provider \
-  -H "Content-Type: application/json" \
-  -d '{
-    "providerId": "HOSPITAL_001",
-    "name": "City Hospital",
-    "type": "HOSPITAL",
-    "baseUrl": "https://city-hospital.example.com/api",
-    "endpoints": { "patientRequest": "/wah4pc/patient/request" },
-    "callback": { "patientResponse": "https://city-hospital.example.com/wah4pc/patient/respond" }
-  }'
 
-# Clinic
-curl -X POST http://localhost:3043/v1/provider \
-  -H "Content-Type: application/json" \
-  -d '{
-    "providerId": "CLINIC_001",
-    "name": "Downtown Clinic",
-    "type": "CLINIC",
-    "baseUrl": "https://clinic.example.com/api",
-    "endpoints": { "patientRequest": "/wah4pc/patient/request" },
-    "callback": { "patientResponse": "https://clinic.example.com/wah4pc/patient/respond" }
-  }'
-```
+
+**Response (201 Created):**
+
+
 
 ---
 
-## 3. Hospital Requests Patient Data
+## Step 2: Register the Clinic (Target)
 
-```bash
-curl -X POST http://localhost:3043/v1/fhir/patient/request \
-  -H "Content-Type: application/json" \
-  -d '{
-    "requestorProviderId": "HOSPITAL_001",
-    "targetProviderId": "CLINIC_001",
-    "patientReference": {
-      "identifiers": [{ "system": "NATIONAL_ID", "value": "123456789" }]
-    }
-  }'
-```
+Register the Clinic with a `callback.patientRequest` URL where it will receive incoming data requests from WAH4PC.
 
-Response:
 
-```json
-{
-  "requestId": "REQ-20251205-0001",
-  "status": "PENDING",
-  "requestorProviderId": "HOSPITAL_001",
-  "targetProviderId": "CLINIC_001",
-  "createdAt": "2025-12-05T05:00:00Z"
-}
-```
+
+**Note:** The `callback.patientRequest` field is where WAH4PC will push incoming requests to the target provider.
 
 ---
 
-## 4. Clinic Sends Response
+## Step 3: Verify Providers
 
-```bash
-curl -X POST http://localhost:3043/v1/fhir/patient/respond \
-  -H "Content-Type: application/json" \
-  -d '{
-    "requestId": "REQ-20251205-0001",
-    "fromProviderId": "CLINIC_001",
-    "fhirPatient": {
-      "resourceType": "Patient",
-      "id": "pat-123",
-      "name": [{ "family": "Doe", "given": ["John"] }],
-      "gender": "male",
-      "birthDate": "1990-01-15"
-    },
-    "status": "COMPLETED"
-  }'
-```
+List all registered providers to confirm both are registered.
 
-WAH4PC will:
-1. Store the response
-2. Push to hospital's callback URL (logged in server console)
+
+
+**Response:**
+
+
 
 ---
 
-## 5. Hospital Pulls Result (Optional)
+## Step 4: Hospital Requests Patient Data
 
-```bash
-curl "http://localhost:3043/v1/fhir/patient/respond?requestId=REQ-20251205-0001"
-```
+The Hospital creates a request for patient data from the Clinic. WAH4PC will automatically push this request to the Clinic's callback URL.
 
-Response:
 
-```json
-{
-  "requestId": "REQ-20251205-0001",
-  "requestorProviderId": "HOSPITAL_001",
-  "targetProviderId": "CLINIC_001",
-  "status": "COMPLETED",
-  "fhirPatient": {
-    "resourceType": "Patient",
-    "id": "pat-123",
-    "name": [{ "family": "Doe", "given": ["John"] }]
-  },
-  "completedAt": "2025-12-05T06:00:00Z"
-}
-```
+
+**Response (201 Created):**
+
+
+
+**Important:** Save the `requestId` - you'll need it for the next steps.
 
 ---
 
-## 6. List All Providers
+## Step 5: Clinic Submits Patient Data
 
-```bash
-curl http://localhost:3043/v1/provider
-```
+After receiving the request (via push or polling), the Clinic submits the FHIR Patient resource back to WAH4PC.
+
+
+
+**What happens next:** WAH4PC automatically pushes the FHIR Patient data to the Hospital's `callback.patientResponse` URL.
 
 ---
 
-## Data Storage
+## Step 6: Hospital Polls for Response (Optional)
 
-All data is stored in JSON files under `./data/`:
+If the callback fails or isn't configured, the Hospital can poll for the response manually.
 
-| File | Contents |
-|------|----------|
-| `providers.json` | Registered providers |
-| `requests.json` | Patient data requests |
-| `responses.json` | FHIR Patient responses |
+
+
+**Response:**
+
+
+
+---
+
+## Alternative: Clinic Polls for Pending Requests
+
+If the Clinic doesn't have a callback configured, it can poll for pending requests instead of receiving pushes.
+
+
+
+**Response:**
+
+
+
+---
+
+## Testing with Mock Callback Servers
+
+To test the full push flow, run mock HTTP servers to receive callbacks.
+
+**Terminal 1: Hospital Callback Server**
+
+Receives FHIR Patient responses from WAH4PC:
+
+
+
+**Terminal 2: Clinic Callback Server**
+
+Receives incoming patient data requests from WAH4PC:
+
+
+
+---
+
+## Complete Test Script
+
+Run this complete script to test the entire flow:
+
+
 
 ---
 
 ## Next Steps
 
-- Read [API Reference](./api-reference.md) for full endpoint details
-- Read [Provider Integration](./provider-integration.md) to integrate your system
-- Read [FHIR Patient Format](./fhir-patient-format.md) for resource structure
+- Read [Flow Overview](./flow-overview.md) to understand the complete request-response lifecycle
+- Read [API Reference](./api-reference.md) for detailed documentation for all endpoints
+- Read [Provider Integration](./provider-integration.md) to learn how to integrate your healthcare system
+- Read [FHIR Patient Format](./fhir-patient-format.md) for PH Core Patient resource specification

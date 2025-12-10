@@ -43,8 +43,8 @@ func main() {
 		})
 	})
 
-	log.Println("WAH4PC API Gateway starting on :3043")
-	if err := http.ListenAndServe(":3043", r); err != nil {
+	log.Println("WAH4PC API Gateway starting on :3050")
+	if err := http.ListenAndServe(":3050", r); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
 }
