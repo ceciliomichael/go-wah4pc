@@ -1,10 +1,15 @@
 package service
 
 import (
+	"errors"
 	"time"
 
 	"github.com/wah4pc/gateway/internal/model"
 	"github.com/wah4pc/gateway/internal/repository"
+)
+
+var (
+	ErrProviderAlreadyExists = errors.New("provider with this ID already exists")
 )
 
 type ProviderService struct {
@@ -51,6 +56,9 @@ func (s *ProviderService) CreateProvider(input CreateProviderInput) (*model.Prov
 	}
 
 	if err := s.repo.Create(provider); err != nil {
+		if err == repository.ErrProviderAlreadyExists {
+			return nil, ErrProviderAlreadyExists
+		}
 		return nil, err
 	}
 

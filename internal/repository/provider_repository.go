@@ -6,7 +6,10 @@ import (
 	"github.com/wah4pc/gateway/internal/model"
 )
 
-var ErrProviderNotFound = errors.New("provider not found")
+var (
+	ErrProviderNotFound      = errors.New("provider not found")
+	ErrProviderAlreadyExists = errors.New("provider with this ID already exists")
+)
 
 type ProviderRepository struct {
 	store      *JSONStore
@@ -50,6 +53,13 @@ func (r *ProviderRepository) Create(provider model.Provider) error {
 	providers, err := r.GetAll()
 	if err != nil {
 		return err
+	}
+
+	// Check for duplicate provider ID
+	for _, p := range providers {
+		if p.ProviderID == provider.ProviderID {
+			return ErrProviderAlreadyExists
+		}
 	}
 
 	providers = append(providers, provider)

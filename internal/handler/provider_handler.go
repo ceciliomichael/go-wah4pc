@@ -68,7 +68,12 @@ func (h *ProviderHandler) CreateProvider(w http.ResponseWriter, r *http.Request)
 
 	provider, err := h.svc.CreateProvider(input)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		switch err {
+		case service.ErrProviderAlreadyExists:
+			writeError(w, http.StatusConflict, "provider with this ID already exists")
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 
